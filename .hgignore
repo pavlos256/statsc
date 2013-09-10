@@ -1,0 +1,24 @@
+# Allow *. syntax
+syntax:glob
+
+# Visual Studio / MonoDevelop files
+*.csproj.user
+*.suo
+*.userprefs
+*.pidb
+*.mdb
+*.pdb
+
+# Windows / Mac desktop files
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Object directories
+obj/
+
+# All bin directories
+[Bb]in/
+
+# NUnit test results
+test-results/
