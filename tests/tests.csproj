@@ -5,10 +5,10 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>10.0.0</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{0264458C-502D-4BC4-A352-960CF76E5FCB}</ProjectGuid>
+    <ProjectGuid>{5CAAC139-2C92-4319-A211-20443ED5946C}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>statsc</RootNamespace>
-    <AssemblyName>statsc</AssemblyName>
+    <RootNamespace>tests</RootNamespace>
+    <AssemblyName>tests</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -19,30 +19,30 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
-    <GenerateDocumentation>true</GenerateDocumentation>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>full</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
-    <GenerateDocumentation>true</GenerateDocumentation>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="nunit.framework">
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Client.cs" />
-    <Compile Include="BufferPool.cs" />
-    <Compile Include="Udp\Client.cs" />
-    <Compile Include="Udp\ClientOptions.cs" />
-    <Compile Include="Metrics.cs" />
-    <Compile Include="UdpClient.cs" />
+    <Compile Include="Test.cs" />
+    <Compile Include="UdpListener.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <Folder Include="Udp\" />
+    <ProjectReference Include="..\statsc\statsc.csproj">
+      <Project>{0264458C-502D-4BC4-A352-960CF76E5FCB}</Project>
+      <Name>statsc</Name>
+    </ProjectReference>
   </ItemGroup>
 </Project>

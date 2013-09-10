@@ -32,7 +32,7 @@ namespace statsc
 	/// require an update of all GC roots as would be the case with lots of smaller arrays
 	/// that were in the normal heap.
 	/// </remarks>
-	public class BufferPool
+	internal class BufferPool
 	{
 		private readonly int segmentsPerBlock;
 		private readonly int segmentSize;
@@ -147,10 +147,10 @@ namespace statsc
 		/// </summary>
 		/// <remarks>
 		/// It is the client's responsibility to return the buffer to the pool by
-		/// calling <see cref="CheckIn"/> on the buffer
+		/// calling <see cref="CheckIn(ArraySegment{byte})"/> on the buffer
 		/// </remarks>
-		/// <seealso cref="CheckIn"/>
-		/// <returns>A <see cref="ArraySegment"/> that can be used as a buffer.</returns>
+		/// <seealso cref="CheckIn(ArraySegment{byte})"/>
+		/// <returns>A <see cref="ArraySegment{T}"/> that can be used as a buffer.</returns>
 		public ArraySegment<byte> CheckOut()
 		{
 			ArraySegment<byte> segment;
@@ -171,7 +171,7 @@ namespace statsc
 		/// <remarks>
 		/// It is the client's responsibility to return the buffers to the pool.
 		/// </remarks>
-		/// <seealso cref="CheckIn"/>
+		/// <seealso cref="CheckIn(IList{ArraySegment{byte}})"/>
 		/// <returns>Returns a list of buffers.</returns>
 		public List<ArraySegment<byte>> CheckOut(int segmentsCount)
 		{
@@ -184,11 +184,11 @@ namespace statsc
 		/// Checks out a number of buffers (segments) from the pool.
 		/// </summary>
 		/// <param name="segmentsCount">The count of segments to check out.</param>
-		/// <param name="target">An instance of <see cref="IList&lt;T&gt;"/> to add the checked out segments into.</param>
+		/// <param name="target">An instance of <see cref="IList{T}"/> to add the checked out segments into.</param>
 		/// <remarks>
 		/// It is the client's responsibility to return the buffers to the pool.
 		/// </remarks>
-		/// <seealso cref="CheckIn"/>
+		/// <seealso cref="CheckIn(IList{ArraySegment{byte}})"/>
 		public void CheckOut(int segmentsCount, IList<ArraySegment<byte>> target)
 		{
 			if (target == null)
@@ -212,10 +212,10 @@ namespace statsc
 		/// Returns a previously checked-out buffer to the control of the pool.
 		/// </summary>
 		/// <remarks>
-		/// The segment returned has to have been checked out by calling <see cref="CheckOut"/>.
+		/// The segment returned has to have been checked out by calling <see cref="CheckOut()"/>.
 		/// </remarks>
-		/// <param name="segment">The <see cref="ArraySegment"/> to return to the cache.</param>
-		/// <seealso cref="CheckOut"/>
+		/// <param name="segment">The <see cref="ArraySegment{T}"/> to return to the cache.</param>
+		/// <seealso cref="CheckOut()"/>
 		public void CheckIn(ArraySegment<byte> segment)
 		{
 #if DEBUG
@@ -233,10 +233,11 @@ namespace statsc
 		/// Returns previously checked-out buffers to the control of the pool.
 		/// </summary>
 		/// <remarks>
-		/// The segments returned have to have been checked out by calling <see cref="CheckOut"/>.
+		/// The segments returned have to have been checked out by calling <see cref="CheckOut(int)"/> or <see cref="CheckOut(int, IList{ArraySegment{byte}})"/>.
 		/// </remarks>
-		/// <param name="segment">The <see cref="ArraySegment"/>s to return to the cache.</param>
-		/// <seealso cref="CheckOut"/>
+		/// <param name="segments">The <see cref="ArraySegment{T}"/>s to return to the cache.</param>
+		/// <seealso cref="CheckOut(int)"/>
+		/// <seealso cref="CheckOut(int, IList{ArraySegment{byte}})"/>
 		public void CheckIn(IList<ArraySegment<byte>> segments)
 		{
 			if (segments == null)

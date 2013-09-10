@@ -211,6 +211,11 @@ namespace statsc.Udp
 			}
 			return false;
 		}
+		/// <summary>
+		/// Begins sending data.
+		/// </summary>
+		/// <param name="buffer">An array segment that contains the data to be sent.</param>
+		/// <param name="userToken">A user supplied parameter that will be available when the send operation completes.</param>
 		protected bool Send(ArraySegment<byte> buffer, object userToken = null)
 		{
 			return Send(buffer.Array, buffer.Offset, buffer.Count, userToken);
@@ -219,6 +224,7 @@ namespace statsc.Udp
 		/// <summary>Begins sending data.</summary>
 		/// <returns>Returns <c>true</c> on success, <c>false</c> on error.</returns>
 		/// <param name='buffers'>The data to sent. WARNING: Only 1 element is supported.</param>
+		/// <param name="userToken">A user supplied parameter that will be available when the send operation completes.</param>
 		protected bool Send(IList<ArraySegment<byte>> buffers, object userToken = null)
 		{
 			if (buffers.Count != 1)
@@ -246,7 +252,10 @@ namespace statsc.Udp
 			{
 			}
 		}
-		
+
+		/// <summary>
+		/// Close this instance.
+		/// </summary>
 		public void Close()
 		{
 			Socket socket = null;
@@ -283,6 +292,7 @@ namespace statsc.Udp
 		/// <summary>
 		/// Callback method called when new data has been received into the read buffer of this instance.
 		/// </summary>
+		/// <param name="data">The buffer holding the received data. It will be overwritten as soon as this call returns.</param>
 		/// <param name="bytes">The number of bytes read into the read buffer.</param>
 		/// <remarks>
 		/// The <paramref name="data"/> buffer is overwritten as soon as this call returns.

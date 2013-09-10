@@ -47,7 +47,7 @@ namespace statsc.Udp
 		public int SocketReceiveBufferSize { get; private set; }
 		
 		/// <summary>
-		/// Initializes a new instance of the <see cref="Rainbow.Comm.Udp.ClientOptions"/> class.
+		/// Initializes a new instance of the <see cref="ClientOptions"/> class.
 		/// </summary>
 		/// <param name='receiveBufferSize'>
 		/// The size of the receive buffer. It is recommended to use the default value,

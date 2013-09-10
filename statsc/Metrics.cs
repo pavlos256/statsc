@@ -25,6 +25,10 @@ namespace statsc
 		{
 			return Format(name, value.ToString(), "c", sampleRate.ToString(CultureInfo.InvariantCulture));
 		}
+		public static string FormatCounter(string name, long value)
+		{
+			return Format(name, value.ToString(), "c");
+		}
 
 		// [g] Gauge
 		public static string FormatGauge(string name, ulong value)

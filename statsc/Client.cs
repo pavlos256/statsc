@@ -12,13 +12,13 @@ namespace statsc
 {
 	/// <summary>
 	/// StatsD client.
-	/// See <see cref="https://github.com/etsy/statsd/blob/master/docs/metric_types.md"/>
-	/// and <see cref="https://github.com/b/statsd_spec"/>.
+	/// See also https://github.com/etsy/statsd/blob/master/docs/metric_types.md
+	/// and https://github.com/b/statsd_spec.
 	/// </summary>
 	/// <remarks>
 	/// Members of this class are thread safe.
 	/// </remarks>
-	public class Client : Udp.Client
+	public class Client
 	{
 		/// <summary>
 		/// Ethernet connections (like Intranets) may use higher MTU:
@@ -28,7 +28,13 @@ namespace statsc
 		/// </summary>
 		public const int DefaultMaxPayloadLength = 512;
 
+		private UdpClient udp;
+
 		private string publicMetricsNamespace, internalMetricsNamespace;
+		/// <summary>
+		/// Gets the metrics namespace (prefix) used in this instance.
+		/// </summary>
+		/// <value>The metrics namespace.</value>
 		public string MetricsNamespace
 		{
 			get { return this.publicMetricsNamespace; }
@@ -49,11 +55,11 @@ namespace statsc
 		/// Initializes a new instance of the <see cref="statsc.Client"/> class.
 		/// </summary>
 		/// <param name="serverEndPoint">Server end point.</param>
+		/// <param name="metricsNamespace">The namespace (prefix) to use for all metrics sent by this instance.</param>
 		/// <param name="maxPayloadLength">The maximum length of a UDP packet.</param>
 		/// <exception cref="ArgumentNullException">Thrown when <paramref name="serverEndPoint"/> is <c>null</c>.</exception>
 		/// <exception cref="System.Net.Sockets.SocketException">Thrown when the <paramref name="hostNameOrAddress"/> value cannot be resolved.</exception>
 		public Client(IPEndPoint serverEndPoint, string metricsNamespace, int maxPayloadLength = DefaultMaxPayloadLength)
-			: base(new Udp.ClientOptions(maxPayloadLength))
 		{
 			if (serverEndPoint == null)
 				throw new ArgumentNullException("serverEndPoint");
@@ -61,9 +67,18 @@ namespace statsc
 				throw new ArgumentNullException("metricsNamespace");
 
 			this.MetricsNamespace = metricsNamespace;
-			this.pool = new BufferPool(this.Options.SocketReceiveBufferSize, 10);
+			this.pool = new BufferPool(maxPayloadLength, 10);
 
-			this.Connect(serverEndPoint);
+			this.udp = new UdpClient(maxPayloadLength, this.pool);
+			this.udp.Connect(serverEndPoint);
+		}
+
+		/// <summary>
+		/// Close this instance and the Udp socket used internally.
+		/// </summary>
+		public void Close()
+		{
+			this.udp.Close();
 		}
 
 		/// <summary>
@@ -72,9 +87,19 @@ namespace statsc
 		/// <param name="name">Name.</param>
 		/// <param name="value">Value.</param>
 		/// <param name="sampleRate">Sample rate, used if not all events are sent, for example 1 out of 10 = 0.1.</param>
-		public void Counter(string name, long value, double sampleRate = 1.0f)
+		public void Counter(string name, long value, double sampleRate)
 		{
 			string s = Metrics.FormatCounter(string.Concat(this.internalMetricsNamespace, name), value, sampleRate);
+			SendMetric(s);
+		}
+		/// <summary>
+		/// Increments or decrements a value on the server. At each flush the current count is sent and reset to 0.
+		/// </summary>
+		/// <param name="name">Name.</param>
+		/// <param name="value">Value.</param>
+		public void Counter(string name, long value)
+		{
+			string s = Metrics.FormatCounter(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
 
@@ -147,7 +172,7 @@ namespace statsc
 
 		/// <summary>
 		/// A "set" collects unique values, ignoring duplicates, and flushes the count of those unique values.
-		/// It's similar to a <see cref="System.Collections.Generic.HashSet<T>.Count"/>.
+		/// It's similar to a <see cref="System.Collections.Generic.HashSet{T}.Count"/>.
 		/// </summary>
 		/// <param name="name">Name.</param>
 		/// <param name="value">Value.</param>
@@ -164,8 +189,8 @@ namespace statsc
 				var buffer = this.pool.CheckOut();
 				try
 				{
-					Encoding.UTF8.GetBytes(text, 0, text.Length, buffer.Array, buffer.Offset);
-					this.Send(buffer, buffer);
+					int bytesWritten = Encoding.UTF8.GetBytes(text, 0, text.Length, buffer.Array, buffer.Offset);
+					this.udp.Send(new ArraySegment<byte>(buffer.Array, buffer.Offset, bytesWritten), buffer);
 				}
 				catch (ArgumentException)
 				{
@@ -180,17 +205,23 @@ namespace statsc
 				ArraySegment<byte> bufferToSend = new ArraySegment<byte>(), bufferToCheckIn = new ArraySegment<byte>();
 				if (this.batch.Add(text, ref bufferToSend, ref bufferToCheckIn))
 				{
-					this.Send(bufferToSend, bufferToCheckIn);
+					this.udp.Send(bufferToSend, bufferToCheckIn);
 				}
 			}
 		}
 
-		protected override void OnDataSent(int bytes, object userToken)
-		{
-			var buffer = (ArraySegment<byte>)userToken;
-			this.pool.CheckIn(buffer);
-		}
-
+		/// <summary>
+		/// Turns batching mode on or off.
+		/// </summary>
+		/// <param name="maxBatchingDuration">Max batching duration, use <see cref="TimeSpan.Zero"/> to turn batching off.</param>
+		/// <remarks>
+		/// Batching will try to fit as many metric messages in one buffer as possible, to avoid many small sends.
+		/// When in batching mode, it will keep appending messages to the internal buffer until the buffer is full
+		/// (<see cref="Client.DefaultMaxPayloadLength"/>), or more than <paramref name="maxBatchingDuration"/> time
+		/// has elapsed since the beginning of the current batch.
+		/// Note that there is no background thread or timer checking if the time has elapsed; the check is performed
+		/// whenever a new metric message is queued to be sent.
+		/// </remarks>
 		public void SetBatching(TimeSpan maxBatchingDuration)
 		{
 			bool turnOn = maxBatchingDuration > TimeSpan.Zero;
@@ -213,7 +244,7 @@ namespace statsc
 						ArraySegment<byte> bufferToSend = new ArraySegment<byte>(), bufferToCheckIn = new ArraySegment<byte>();
 						if (this.batch.Add(null, ref bufferToSend, ref bufferToCheckIn))
 						{
-							this.Send(bufferToSend, bufferToCheckIn);
+							this.udp.Send(bufferToSend, bufferToCheckIn);
 						}
 						this.batch.Dispose();
 						this.batch = null;
@@ -242,7 +273,7 @@ namespace statsc
 			#region IDisposable Members
 			/// <summary>
 			/// Releases unmanaged resources and performs other cleanup operations before the
-			/// <see cref="ThreadRunner"/> is reclaimed by garbage collection.
+			/// <see cref="Batch"/> is reclaimed by garbage collection.
 			/// </summary>
 			~Batch()
 			{
@@ -295,11 +326,16 @@ namespace statsc
 					// Get length of text in bytes
 					int dataSize = Encoding.UTF8.GetByteCount(text);
 
+					bool needSeparator = this.usedInBuffer > 0;
+
 					// If the data fits in what's left of the buffer (counting the separator)
-					if (usedInBuffer + 1 + dataSize <= this.buffer.Count)
+					if (usedInBuffer + dataSize + (needSeparator ? 1 : 0) <= this.buffer.Count)
 					{
-						// Put the separator in the buffer
-						this.buffer.Array[this.buffer.Offset + this.usedInBuffer++] = (byte)'\n';
+						if (needSeparator)
+						{
+							// Put the separator in the buffer
+							this.buffer.Array[this.buffer.Offset + this.usedInBuffer++] = (byte)'\n';
+						}
 
 						// Put the bytes in the buffer
 						this.usedInBuffer += Encoding.UTF8.GetBytes(text, 0, text.Length, this.buffer.Array, this.buffer.Offset + this.usedInBuffer);
