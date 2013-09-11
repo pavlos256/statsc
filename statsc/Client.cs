@@ -18,7 +18,7 @@ namespace statsc
 	/// <remarks>
 	/// Members of this class are thread safe.
 	/// </remarks>
-	public class Client
+	public class Client : IDisposable
 	{
 		/// <summary>
 		/// Ethernet connections (like Intranets) may use higher MTU:
@@ -46,10 +46,11 @@ namespace statsc
 					this.internalMetricsNamespace = this.internalMetricsNamespace + ".";
 			}
 		}
-		private BufferPool pool;
 
+		private BufferPool pool;
 		private Batch batch;
 		private object batchLock = new object();
+		private bool disposed;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="statsc.Client"/> class.
@@ -73,13 +74,52 @@ namespace statsc
 			this.udp.Connect(serverEndPoint);
 		}
 
+		#region IDisposable Members
 		/// <summary>
-		/// Close this instance and the Udp socket used internally.
+		/// Releases unmanaged resources and performs other cleanup operations before the <see cref="statsc.Client"/> is
+		/// reclaimed by garbage collection.
 		/// </summary>
-		public void Close()
+		~Client()
 		{
-			this.udp.Close();
+			Dispose(false);
 		}
+
+		/// <summary>
+		/// Releases all resource used by the <see cref="statsc.Client"/> object.
+		/// </summary>
+		/// <remarks>Call <see cref="Dispose()"/> when you are finished using the <see cref="statsc.Client"/>. The <see cref="Dispose()"/>
+		/// method leaves the <see cref="statsc.Client"/> in an unusable state. After calling <see cref="Dispose()"/>, you must
+		/// release all references to the <see cref="statsc.Client"/> so the garbage collector can reclaim the memory that the
+		/// <see cref="statsc.Client"/> was occupying.</remarks>
+		public void Dispose()
+		{
+			if (this.disposed)
+				return;
+
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		/// <summary>
+		/// Releases unmanaged (and optionally managed) resources
+		/// </summary>
+		/// <param name="releaseManaged"><c>true</c> to release both managed and unmanaged resources; <c>false</c> to release only unmanaged resources.</param>
+		protected virtual void Dispose(bool releaseManaged)
+		{
+			if (this.disposed)
+				return;
+
+			if (releaseManaged)
+			{
+				// free managed resources
+				this.SetBatching(TimeSpan.Zero);
+				this.udp.Close();
+			}
+			// free native resources
+
+			this.disposed = true;
+		}
+		#endregion
 
 		/// <summary>
 		/// Increments or decrements a value on the server. At each flush the current count is sent and reset to 0.
@@ -89,6 +129,8 @@ namespace statsc
 		/// <param name="sampleRate">Sample rate, used if not all events are sent, for example 1 out of 10 = 0.1.</param>
 		public void Counter(string name, long value, double sampleRate)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatCounter(string.Concat(this.internalMetricsNamespace, name), value, sampleRate);
 			SendMetric(s);
 		}
@@ -99,6 +141,8 @@ namespace statsc
 		/// <param name="value">Value.</param>
 		public void Counter(string name, long value)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatCounter(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
@@ -110,6 +154,8 @@ namespace statsc
 		/// <param name="value">Value.</param>
 		public void Gauge(string name, ulong value)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatGauge(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
@@ -125,6 +171,8 @@ namespace statsc
 		/// </remarks>
 		public void GaugeDelta(string name, string sign, ulong value)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatGaugeDelta(string.Concat(this.internalMetricsNamespace, name), sign, value);
 			SendMetric(s);
 		}
@@ -136,6 +184,8 @@ namespace statsc
 		/// <param name="value">Value.</param>
 		public void Timer(string name, ulong value)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatTimer(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
@@ -146,6 +196,8 @@ namespace statsc
 		/// <param name="value">Value.</param>
 		public void Timer(string name, TimeSpan value)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatTimer(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
@@ -157,6 +209,8 @@ namespace statsc
 		/// <param name="value">Value.</param>
 		public void Meter(string name, ulong value)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatMeter(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
@@ -166,6 +220,8 @@ namespace statsc
 		/// <param name="name">Name.</param>
 		public void Meter(string name)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatMeter(string.Concat(this.internalMetricsNamespace, name));
 			SendMetric(s);
 		}
@@ -178,6 +234,8 @@ namespace statsc
 		/// <param name="value">Value.</param>
 		public void Set(string name, string value)
 		{
+			if (this.disposed) return;
+
 			string s = Metrics.FormatSet(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
@@ -229,6 +287,8 @@ namespace statsc
 		/// </remarks>
 		public void SetBatching(TimeSpan maxBatchingDuration)
 		{
+			if (this.disposed) return;
+
 			bool turnOn = maxBatchingDuration > TimeSpan.Zero;
 
 			lock (this.batchLock)

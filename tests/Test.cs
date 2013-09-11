@@ -36,7 +36,7 @@ namespace tests
 		public void TearDown()
 		{
 			Console.WriteLine("Tearing down...");
-			client.Close();
+			client.Dispose();
 			server.Stop();
 			Console.WriteLine("Tear down done.");
 		}
