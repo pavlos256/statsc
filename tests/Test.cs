@@ -8,6 +8,7 @@ using System;
 using NUnit.Framework;
 using System.Threading;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace tests
 {
@@ -174,6 +175,42 @@ namespace tests
 			TestStuff(split.GetRange(0, 10));
 			TestStuff(split.GetRange(10, 10));
 			TestStuff(split.GetRange(20, 10));
+		}
+		
+		[Test()]
+		public void Test4SimpleConcurrent()
+		{
+			server.GetMessages();
+
+			Parallel.For(0, 10, i => SendStuff());
+
+			Thread.Sleep(500);
+
+			var messages = server.GetMessages();
+			Assert.IsNotNull(messages);
+			Assert.AreEqual(10*10, messages.Count, "Received messages count differs");
+		}
+
+		[Test()]
+		public void Test5BatchConcurrent()
+		{
+			server.GetMessages();
+
+			client.SetBatching(TimeSpan.FromMilliseconds(25));
+
+			Parallel.For(0, 10, i => SendStuff());
+
+			client.SetBatching(TimeSpan.Zero);
+
+			Thread.Sleep(500);
+
+			var messages = server.GetMessages();
+			Assert.IsNotNull(messages);
+
+			var list = new List<string>(10*10);
+			foreach (string s in messages)
+				list.AddRange(s.Split('\n'));
+			Assert.AreEqual(10*10, list.Count, "Received messages count differs");
 		}
 	}
 }
