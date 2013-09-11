@@ -203,7 +203,12 @@ namespace statsc
 			else
 			{
 				ArraySegment<byte> bufferToSend = new ArraySegment<byte>(), bufferToCheckIn = new ArraySegment<byte>();
-				if (this.batch.Add(text, ref bufferToSend, ref bufferToCheckIn))
+				bool batchReady;
+				lock (this.batchLock)
+				{
+					batchReady = this.batch.Add(text, ref bufferToSend, ref bufferToCheckIn);
+				}
+				if (batchReady)
 				{
 					this.udp.Send(bufferToSend, bufferToCheckIn);
 				}
