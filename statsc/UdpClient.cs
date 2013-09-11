@@ -18,9 +18,9 @@ namespace statsc
 			this.pool = pool;
 		}
 
-		public new void Send(ArraySegment<byte> buffer, object token)
+		public new bool Send(ArraySegment<byte> buffer, object token)
 		{
-			base.Send(buffer, token);
+			return base.Send(buffer, token);
 		}
 
 		protected override void OnDataSent(int bytes, object userToken)
