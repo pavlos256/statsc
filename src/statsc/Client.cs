@@ -69,7 +69,7 @@ namespace statsc
 		/// <param name="maxPayloadLength">The maximum length of a UDP packet.</param>
 		/// <exception cref="ArgumentNullException">Thrown when <paramref name="serverEndPoint"/> is <c>null</c>.</exception>
 		/// <exception cref="System.Net.Sockets.SocketException">Thrown when the <paramref name="hostNameOrAddress"/> value cannot be resolved.</exception>
-		public Client(IPEndPoint serverEndPoint, string metricsNamespace, int maxPayloadLength = DefaultMaxPayloadLength)
+		public Client(EndPoint serverEndPoint, string metricsNamespace, int maxPayloadLength = DefaultMaxPayloadLength)
 		{
 			if (serverEndPoint == null)
 				throw new ArgumentNullException("serverEndPoint");
