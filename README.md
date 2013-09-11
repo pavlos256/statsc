@@ -31,13 +31,13 @@ NUnit is required for the unit tests.
 
 	client.Dispose();
 
-	// Does nothing
+	// Does nothing (does not throw)
 	client.Counter("counter1", 5);
 
 ### Batching mode
 	:::csharp
 	// Keep messages in internal buffer for up to 1 second
-	// and send them with one packet, if possible.
+	// and send them in one packet, if possible.
 	sc.SetBatching(TimeSpan.FromSeconds(1d));
 
 	sc.Counter("counter1", 5);
@@ -76,13 +76,18 @@ A dummy client with empty implementation and a common `IClient` (or `IBatchingCl
 	else
 		sc = new statsc.NullClient("app-namespace");
 
-	// The following do nothing
+	// The following won't do anything if the `NullClient` is used
 	sc.Counter("counter1", 5);
 	sc.Counter("counter2", 1, 0.5d);
 
-## License
+## Thread safety
+Static and instance methods of the `Client` (and `NullClient` of course) classes are thread-safe.
 
+## Exceptions
+The `Client` class is designed to be safe to use without having to worry about it throwing exceptions and wrapping every metric in try/catch. The constructor, however, can throw if it fails to initialize.
+
+## License
 StatsC is provided under the common [MIT license](http://opensource.org/licenses/mit-license.php). In short, it is free to be used in any project, commercial or not, as long 
-as the license and copyright notice is kept. See the LICENSE file for details.
+as the license and copyright notice are kept. See the LICENSE file for details.
 
 Copyright © 2013, Pavlos Touboulidis.
