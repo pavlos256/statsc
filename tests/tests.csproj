@@ -40,7 +40,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <ProjectReference Include="..\statsc\statsc.csproj">
+    <ProjectReference Include="..\src\statsc\statsc.csproj">
       <Project>{0264458C-502D-4BC4-A352-960CF76E5FCB}</Project>
       <Name>statsc</Name>
     </ProjectReference>

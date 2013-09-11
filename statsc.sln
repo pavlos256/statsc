@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "statsc", "statsc\statsc.csproj", "{0264458C-502D-4BC4-A352-960CF76E5FCB}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tests", "tests\tests.csproj", "{5CAAC139-2C92-4319-A211-20443ED5946C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "statsc", "src\statsc\statsc.csproj", "{0264458C-502D-4BC4-A352-960CF76E5FCB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +21,6 @@ Global
 		{5CAAC139-2C92-4319-A211-20443ED5946C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
-		StartupItem = statsc\statsc.csproj
+		StartupItem = tests\tests.csproj
 	EndGlobalSection
 EndGlobal
