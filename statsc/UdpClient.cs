@@ -20,7 +20,15 @@ namespace statsc
 
 		public new bool Send(ArraySegment<byte> buffer, object token)
 		{
-			return base.Send(buffer, token);
+			try
+			{
+				return base.Send(buffer, token);
+			}
+			catch
+			{
+				// Shouldn't happen because "base.Send" takes care of possible thrown exceptions
+				return false;
+			}
 		}
 
 		protected override void OnDataSent(int bytes, object userToken)

@@ -40,6 +40,9 @@
     <Compile Include="Udp\ClientOptions.cs" />
     <Compile Include="Metrics.cs" />
     <Compile Include="UdpClient.cs" />
+    <Compile Include="IClient.cs" />
+    <Compile Include="IBatchingClient.cs" />
+    <Compile Include="NullClient.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

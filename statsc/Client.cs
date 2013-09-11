@@ -11,14 +11,23 @@ using System.Text;
 namespace statsc
 {
 	/// <summary>
-	/// StatsD client.
-	/// See also https://github.com/etsy/statsd/blob/master/docs/metric_types.md
-	/// and https://github.com/b/statsd_spec.
+	/// A high performance, asynchronous StatsD client with support for batch sends.
+	/// See the specification at https://github.com/b/statsd_spec
+	/// and https://github.com/etsy/statsd/blob/master/docs/metric_types.md
 	/// </summary>
 	/// <remarks>
-	/// Members of this class are thread safe.
+	/// <para>
+	/// Static and instance members of this class are thread-safe.
+	/// </para>
+	/// <para>
+	/// This class is designed to be safe to use without having to worry about it
+	/// throwing exceptions and wrapping every metric in try/catch.
+	///
+	/// The constructor, however, can throw if it fails to initialize.
+	/// </para>
 	/// </remarks>
-	public class Client : IDisposable
+	/// <threadsafety static="true" instance="true" />
+	public class Client : IBatchingClient
 	{
 		/// <summary>
 		/// Ethernet connections (like Intranets) may use higher MTU:
@@ -109,18 +118,24 @@ namespace statsc
 			if (this.disposed)
 				return;
 
+			this.disposed = true;
+
 			if (releaseManaged)
 			{
 				// free managed resources
 				this.SetBatching(TimeSpan.Zero);
 				this.udp.Close();
+				lock (this.batchLock)
+				{
+					if (this.batch != null)
+						this.batch.Dispose();
+				}
 			}
 			// free native resources
-
-			this.disposed = true;
 		}
 		#endregion
 
+		#region IClient Members
 		/// <summary>
 		/// Increments or decrements a value on the server. At each flush the current count is sent and reset to 0.
 		/// </summary>
@@ -239,40 +254,9 @@ namespace statsc
 			string s = Metrics.FormatSet(string.Concat(this.internalMetricsNamespace, name), value);
 			SendMetric(s);
 		}
+		#endregion
 
-		private void SendMetric(string text)
-		{
-			if (this.batch == null)
-			{
-				var buffer = this.pool.CheckOut();
-				try
-				{
-					int bytesWritten = Encoding.UTF8.GetBytes(text, 0, text.Length, buffer.Array, buffer.Offset);
-					this.udp.Send(new ArraySegment<byte>(buffer.Array, buffer.Offset, bytesWritten), buffer);
-				}
-				catch (ArgumentException)
-				{
-					// text is too long according to the configured maximum payload
-				}
-				catch
-				{
-				}
-			}
-			else
-			{
-				ArraySegment<byte> bufferToSend = new ArraySegment<byte>(), bufferToCheckIn = new ArraySegment<byte>();
-				bool batchReady;
-				lock (this.batchLock)
-				{
-					batchReady = this.batch.Add(text, ref bufferToSend, ref bufferToCheckIn);
-				}
-				if (batchReady)
-				{
-					this.udp.Send(bufferToSend, bufferToCheckIn);
-				}
-			}
-		}
-
+		#region IBatchingClient Members
 		/// <summary>
 		/// Turns batching mode on or off.
 		/// </summary>
@@ -317,8 +301,42 @@ namespace statsc
 				}
 			}
 		}
+		#endregion
 
-		#region Batch
+		private void SendMetric(string text)
+		{
+			if (this.batch == null)
+			{
+				var buffer = this.pool.CheckOut();
+				try
+				{
+					int bytesWritten = Encoding.UTF8.GetBytes(text, 0, text.Length, buffer.Array, buffer.Offset);
+					this.udp.Send(new ArraySegment<byte>(buffer.Array, buffer.Offset, bytesWritten), buffer);
+				}
+				catch (ArgumentException)
+				{
+					// text is too long according to the configured maximum payload
+				}
+				catch
+				{
+				}
+			}
+			else
+			{
+				ArraySegment<byte> bufferToSend = new ArraySegment<byte>(), bufferToCheckIn = new ArraySegment<byte>();
+				bool batchReady;
+				lock (this.batchLock)
+				{
+					batchReady = this.batch.Add(text, ref bufferToSend, ref bufferToCheckIn);
+				}
+				if (batchReady)
+				{
+					this.udp.Send(bufferToSend, bufferToCheckIn);
+				}
+			}
+		}
+
+		#region class Batch
 		class Batch : IDisposable
 		{
 			private DateTime batchStartUtc;
