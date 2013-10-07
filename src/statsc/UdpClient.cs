@@ -18,23 +18,23 @@ namespace statsc
 			this.pool = pool;
 		}
 
-		public new bool Send(ArraySegment<byte> buffer, object token)
+		public void Send(ArraySegment<byte> exactBuffer, ArraySegment<byte> poolBuffer)
 		{
 			try
 			{
-				return base.Send(buffer, token);
+				if (!base.Send(exactBuffer, poolBuffer))
+					this.pool.CheckIn(poolBuffer);
 			}
 			catch
 			{
 				// Shouldn't happen because "base.Send" takes care of possible thrown exceptions
-				return false;
 			}
 		}
 
-		protected override void OnDataSent(int bytes, object userToken)
+		protected override void OnSendCompleted(int bytes, System.Net.Sockets.SocketError result, object userToken)
 		{
-			var buffer = (ArraySegment<byte>)userToken;
-			this.pool.CheckIn(buffer);
+			var poolBuffer = (ArraySegment<byte>)userToken;
+			this.pool.CheckIn(poolBuffer);
 		}
 	}
 }
