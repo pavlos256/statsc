@@ -19,6 +19,23 @@ namespace statsc
 		{
 			return string.Concat(metricName, ":", value, "|", type);
 		}
+		private static string FixSetKey(string keyName)
+		{
+			// Nulls are converted to empty strings in the Format method and are property counted by statsd
+			if (keyName == null)
+				return keyName;
+
+			// ':' is not allowed (causes "Bad line" error)
+			if (keyName.IndexOf(':') > 0)
+				keyName = keyName.Replace(':', '_');
+
+			// '|' is not allowed (causes "Bad line" error)
+			if (keyName.IndexOf('|') > 0)
+				keyName = keyName.Replace('|', '_');
+
+			// '@' and '.' are OK
+			return keyName;
+		}
 
 		// [c] Counter
 		public static string FormatCounter(string name, long value, double sampleRate = 1.0f)
@@ -63,7 +80,7 @@ namespace statsc
 		// [s] Set
 		public static string FormatSet(string name, string value)
 		{
-			return Format(name, value, "s");
+			return Format(name, FixSetKey(value), "s");
 		}
 	}
 }
