@@ -290,11 +290,13 @@ namespace statsc
 					if (!turnOn)
 					{
 						// Turn batching off
-						ArraySegment<byte> bufferToSend = new ArraySegment<byte>(), bufferToCheckIn = new ArraySegment<byte>();
-						if (this.batch.Add(null, ref bufferToSend, ref bufferToCheckIn))
+						ArraySegment<byte> bufferToSend, bufferToCheckIn;
+
+						if (this.batch.Add(null, out bufferToSend, out bufferToCheckIn))
 						{
 							this.udp.Send(bufferToSend, bufferToCheckIn);
 						}
+
 						this.batch.Dispose();
 						this.batch = null;
 					}
@@ -323,12 +325,14 @@ namespace statsc
 			}
 			else
 			{
-				ArraySegment<byte> bufferToSend = new ArraySegment<byte>(), bufferToCheckIn = new ArraySegment<byte>();
+				ArraySegment<byte> bufferToSend, bufferToCheckIn;
 				bool batchReady;
+
 				lock (this.batchLock)
 				{
-					batchReady = this.batch.Add(text, ref bufferToSend, ref bufferToCheckIn);
+					batchReady = this.batch.Add(text, out bufferToSend, out bufferToCheckIn);
 				}
+
 				if (batchReady)
 				{
 					this.udp.Send(bufferToSend, bufferToCheckIn);
@@ -385,7 +389,7 @@ namespace statsc
 			}
 			#endregion
 
-			private bool Flush(DateTime utcNow, ref ArraySegment<byte> bufferToSend, ref ArraySegment<byte> bufferToCheckIn)
+			private bool Flush(DateTime utcNow, out ArraySegment<byte> bufferToSend, out ArraySegment<byte> bufferToCheckIn)
 			{
 				if (this.usedInBuffer > 0)
 				{
@@ -398,10 +402,12 @@ namespace statsc
 					return true;
 				}
 
+				bufferToSend = default(ArraySegment<byte>);
+				bufferToCheckIn = default(ArraySegment<byte>);
 				return false;
 			}
 
-			public bool Add(string text, ref ArraySegment<byte> bufferToSend, ref ArraySegment<byte> bufferToCheckIn)
+			public bool Add(string text, out ArraySegment<byte> bufferToSend, out ArraySegment<byte> bufferToCheckIn)
 			{
 				// If text is null or empty, just flush, otherwise add it
 				if (!string.IsNullOrEmpty(text))
@@ -427,7 +433,7 @@ namespace statsc
 						DateTime utcNow = DateTime.UtcNow;
 						if (utcNow.Subtract(this.batchStartUtc) >= this.maxBatchingDuration)
 						{
-							this.Flush(utcNow, ref bufferToSend, ref bufferToCheckIn);
+							this.Flush(utcNow, out bufferToSend, out bufferToCheckIn);
 
 							// Buffer's ready
 							return true;
@@ -435,6 +441,8 @@ namespace statsc
 						else
 						{
 							// It's not time to send, we'll gather more data.
+							bufferToSend = default(ArraySegment<byte>);
+							bufferToCheckIn = default(ArraySegment<byte>);
 							return false;
 						}
 					}
@@ -445,7 +453,7 @@ namespace statsc
 						DateTime utcNow = DateTime.UtcNow;
 
 						// If it's because we aleady have data in there
-						if (this.Flush(utcNow, ref bufferToSend, ref bufferToCheckIn))
+						if (this.Flush(utcNow, out bufferToSend, out bufferToCheckIn))
 						{
 							// Put the bytes in the new buffer
 							this.usedInBuffer += Encoding.UTF8.GetBytes(text, 0, text.Length, this.buffer.Array, this.buffer.Offset + this.usedInBuffer);
@@ -463,7 +471,7 @@ namespace statsc
 				{
 					// "text" is empty, just flush the current buffer.
 					DateTime utcNow = DateTime.UtcNow;
-					return this.Flush(utcNow, ref bufferToSend, ref bufferToCheckIn);
+					return this.Flush(utcNow, out bufferToSend, out bufferToCheckIn);
 				}
 			}
 		}
