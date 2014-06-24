@@ -325,17 +325,28 @@ namespace statsc
 			}
 			else
 			{
-				ArraySegment<byte> bufferToSend, bufferToCheckIn;
-				bool batchReady;
+				var bufferToSend = new ArraySegment<byte>();
+				var bufferToCheckIn = new ArraySegment<byte>();
+				bool batchReady = false;
+				bool handled = false;
 
 				lock (this.batchLock)
 				{
-					batchReady = this.batch.Add(text, out bufferToSend, out bufferToCheckIn);
+					if (this.batch != null)
+					{
+						batchReady = this.batch.Add(text, out bufferToSend, out bufferToCheckIn);
+						handled = true;
+					}
 				}
 
 				if (batchReady)
 				{
 					this.udp.Send(bufferToSend, bufferToCheckIn);
+				}
+				else if (!handled)
+				{
+					// Batching was just turned off, try again
+					SendMetric(text);
 				}
 			}
 		}
