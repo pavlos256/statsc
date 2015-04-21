@@ -37,7 +37,7 @@ namespace statsc
 		/// </summary>
 		public const int DefaultMaxPayloadLength = 512;
 
-		private UdpClient udp;
+		private Udp.Client udp;
 
 		private string publicMetricsNamespace, internalMetricsNamespace;
 		/// <summary>
@@ -79,7 +79,7 @@ namespace statsc
 			this.MetricsNamespace = metricsNamespace;
 			this.pool = new BufferPool(maxPayloadLength, 10);
 
-			this.udp = new UdpClient(maxPayloadLength, this.pool);
+			this.udp = new Udp.Client(new Udp.ClientOptions(maxPayloadLength));
 			this.udp.Connect(serverEndPoint);
 		}
 
@@ -294,7 +294,8 @@ namespace statsc
 
 						if (this.batch.Add(null, out bufferToSend, out bufferToCheckIn))
 						{
-							this.udp.Send(bufferToSend, bufferToCheckIn);
+							this.udp.Send(bufferToSend);
+							this.pool.CheckIn(bufferToCheckIn);
 						}
 
 						this.batch.Dispose();
@@ -313,7 +314,7 @@ namespace statsc
 				try
 				{
 					int bytesWritten = Encoding.UTF8.GetBytes(text, 0, text.Length, buffer.Array, buffer.Offset);
-					this.udp.Send(new ArraySegment<byte>(buffer.Array, buffer.Offset, bytesWritten), buffer);
+					this.udp.Send(buffer.Array, buffer.Offset, bytesWritten);
 				}
 				catch (ArgumentException)
 				{
@@ -321,6 +322,10 @@ namespace statsc
 				}
 				catch
 				{
+				}
+				finally
+				{
+					this.pool.CheckIn(buffer);
 				}
 			}
 			else
@@ -341,7 +346,8 @@ namespace statsc
 
 				if (batchReady)
 				{
-					this.udp.Send(bufferToSend, bufferToCheckIn);
+					this.udp.Send(bufferToSend);
+					this.pool.CheckIn(bufferToCheckIn);
 				}
 				else if (!handled)
 				{

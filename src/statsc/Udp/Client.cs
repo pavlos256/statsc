@@ -37,19 +37,6 @@ namespace statsc.Udp
 				throw new ArgumentNullException("options");
 			this.Options = options;
 		}
-
-		private void AsyncCompleted(object sender, SocketAsyncEventArgs e)
-		{
-			switch (e.LastOperation)
-			{
-				case SocketAsyncOperation.Send:
-					ProcessSend(e);
-					break;
-					
-				default:
-					throw (new ArgumentException("Unhandled socket operation."));
-			}
-		}
 		
 		/// <summary>
 		/// Connects to the specified <paramref name="remoteEndPoint"/> (both <see cref="IPEndPoint"/> and <see cref="DnsEndPoint"/> are supported).
@@ -85,6 +72,7 @@ namespace statsc.Udp
 					{
 						this.Socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 						socket = this.Socket;
+						socket.SendBufferSize = this.Options.SocketReceiveBufferSize;
 					}
 				}
 			}
@@ -109,15 +97,14 @@ namespace statsc.Udp
 				throw;
 			}
 		}
-		
+
 		/// <summary>
-		/// Begins sending data.
+		/// Sends data.
 		/// </summary>
 		/// <param name="buffer">A byte array that contains the data to be sent.</param>
 		/// <param name="offset">The zero-based position in the buffer parameter at which to begin sending data.</param>
 		/// <param name="size">The number of bytes to send.</param>
-		/// <param name="userToken">A user supplied parameter that will be available when the send operation completes.</param>
-		public bool Send(byte[] buffer, int offset, int size, object userToken = null)
+		public bool Send(byte[] buffer, int offset, int size)
 		{
 			try
 			{
@@ -125,12 +112,12 @@ namespace statsc.Udp
 				if (socket == null)
 					return false;
 
-				SocketAsyncEventArgs e = new SocketAsyncEventArgs();
-				e.Completed += AsyncCompleted;
-				e.UserToken = userToken;
-				e.SetBuffer(buffer, offset, size);
-				if (!socket.SendAsync(e))
-					ProcessSend(e);
+				SocketError errorCode;
+				if (socket.Send(buffer, offset, size, SocketFlags.None, out errorCode) != size)
+					return false;
+				if (errorCode != SocketError.Success)
+					return false;
+
 				return true;
 			}
 			catch (SocketException)
@@ -143,43 +130,43 @@ namespace statsc.Udp
 			}
 			return false;
 		}
+
 		/// <summary>
-		/// Begins sending data.
+		/// Sends data.
 		/// </summary>
-		/// <param name="buffer">An array segment that contains the data to be sent.</param>
-		/// <param name="userToken">A user supplied parameter that will be available when the send operation completes.</param>
-		protected bool Send(ArraySegment<byte> buffer, object userToken = null)
+		/// <param name="buffer">The data to send.</param>
+		public bool Send(ArraySegment<byte> buffer)
 		{
-			return Send(buffer.Array, buffer.Offset, buffer.Count, userToken);
+			return this.Send(buffer.Array, buffer.Offset, buffer.Count);
 		}
-		
-		/// <summary>Begins sending data.</summary>
+
+		/// Sends data.
 		/// <returns>Returns <c>true</c> on success, <c>false</c> on error.</returns>
-		/// <param name='buffers'>The data to sent. WARNING: Only 1 element is supported.</param>
-		/// <param name="userToken">A user supplied parameter that will be available when the send operation completes.</param>
-		protected bool Send(IList<ArraySegment<byte>> buffers, object userToken = null)
-		{
-			if (buffers.Count != 1)
-				throw (new ArgumentException("The list of buffers should have exactly one element.", "buffers"));
-
-			foreach(var buffer in buffers)
-				return Send(buffer, userToken);
-			
-			return false;
-		}
-
-		private void ProcessSend(SocketAsyncEventArgs e)
+		/// <param name='buffers'>The data to send.</param>
+		public bool Send(IList<ArraySegment<byte>> buffers)
 		{
 			try
 			{
-				OnSendCompleted(e.BytesTransferred, e.SocketError, e.UserToken);
+				var socket = this.Socket;
+				if (socket == null)
+					return false;
+
+				SocketError errorCode;
+				socket.Send(buffers, SocketFlags.None, out errorCode);
+				if (errorCode != SocketError.Success)
+					return false;
+
+				return true;
 			}
 			catch (SocketException)
 			{
+				Close();
 			}
 			catch (ObjectDisposedException)
 			{
+				Close();
 			}
+			return false;
 		}
 
 		/// <summary>
@@ -214,16 +201,6 @@ namespace statsc.Udp
 		/// Callback method called when a connection is made.
 		/// </summary>
 		protected virtual void OnConnected()
-		{
-		}
-		
-		/// <summary>
-		/// Callback method called when a Send() method completes and the data have been sent.
-		/// </summary>
-		/// <param name="bytes">The number of bytes sent.</param>
-		/// <param name="result">The result of the asynchronous socket operation.</param>
-		/// <param name="userToken">A user token supplied when the Send method was invoked.</param>
-		protected virtual void OnSendCompleted(int bytes, SocketError result, object userToken)
 		{
 		}
 		

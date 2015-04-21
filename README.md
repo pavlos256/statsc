@@ -1,6 +1,6 @@
 # StatsC
 
-An asynchronous StatsD client with built-in support for batching.
+A StatsD client with built-in support for batching.
 
 ## Spec
 StatsC follows the [StatsD spec](https://github.com/b/statsd_spec) and implements the Gauge Delta & the Set extensions from [etsy/statsd](https://github.com/etsy/statsd/blob/master/docs/metric_types.md).
@@ -90,4 +90,4 @@ The `Client` class is designed to be safe to use without having to worry about i
 StatsC is provided under the common [MIT license](http://opensource.org/licenses/mit-license.php). In short, it is free to be used in any project, commercial or not, as long 
 as the license and copyright notice are kept. See the LICENSE file for details.
 
-Copyright © 2013, Pavlos Touboulidis.
+Copyright © 2013-2015, Pavlos Touboulidis.
